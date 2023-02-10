@@ -1,0 +1,45 @@
+// insertion sort
+
+let r : int = test(1)
+
+function test (i : int) : int
+{
+  let len : int = 0
+  let a : array 1 = array[0]
+  let i : int = 0
+  let y : int = 0
+  input len
+  a := array[len]
+  while i < len {
+    input y
+    a[i] := y
+    i := i + 1
+  }
+
+  i := sort(a, len)
+
+  i := 0
+  while i < len {
+    y := a[i]
+    output y
+    i := i + 1
+  }
+  return i
+}
+
+function sort (a : array 1) (len : int) : int {
+  let i : int = 1
+  let y : int = 0
+  let j : int = 0
+  while i < len {
+    y := a[i]
+    j := i - 1
+    while (!(j < 0) && (a[j] > y)) {
+      a[j+1] := a[j]
+      j := j - 1
+    }
+    a[j+1] := y
+    i := i + 1
+  }
+  return i
+}

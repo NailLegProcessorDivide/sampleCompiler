@@ -1,0 +1,8 @@
+let r : int = f(42)
+function f (x : int) : int
+{
+ let a : int = 486921
+ let z : int = 0
+ output a
+ return z
+}
