@@ -20,8 +20,8 @@ pub enum Reg {
 }
 
 pub enum Displacement {
-    Concrete_disp(i64),
-    Label_disp(String)
+    ConcreteDisp(i64),
+    LabelDisp(String)
 }
 
 pub enum Rm {

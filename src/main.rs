@@ -1,7 +1,6 @@
 use std::env;
 use std::fs::File;
-use std::io::{Write};
-use std::collections::{HashSet, HashMap};
+use std::io::Write;
 
 use source_ast::Prog;
 

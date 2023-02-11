@@ -112,7 +112,7 @@ fn unnest_exp(e: Exp, nextIdent: &mut i64) -> (Vec<Stmt>, Exp) {
 fn unnest_stmt(s: Stmt, nextIdent: &mut i64) -> Vec<Stmt> {
     match s {
         Stmt::Assign(x, es, e) => {
-            if (es.is_empty()) {
+            if es.is_empty() {
                 let (mut s, f) = unnest_exp(e, nextIdent);
                 s.push(Stmt::Assign(x, Vec::new(), f));
                 s

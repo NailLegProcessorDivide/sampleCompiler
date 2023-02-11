@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{Read};
 
-use crate::source_ast::Prog;
+use crate::source_ast::{Prog, parse_program};
 use crate::tokens::{print_token_list, lex};
 
 pub fn front_end (filename : &str, debug : bool) -> Prog {
@@ -12,7 +12,6 @@ pub fn front_end (filename : &str, debug : bool) -> Prog {
     if debug {
         print_token_list(&toks);
     }
+    let ast = parse_program(&toks);
     todo!()
-    //let ast = parse_program(toks);
-    //todo!()
 }

@@ -63,62 +63,62 @@ pub enum UOP {
     Not
 }
 
-const fn show_op(op: &OP) -> &'static str {
+pub const fn show_op(op: &OP) -> &'static str {
     match op {
-        OP::Plus => "+",
-        OP::Minus => "-",
-        OP::Times => "*",
-        OP::Div => "/",
-        OP::Lshift => "<<",
-        OP::BitOr => "|",
-        OP::BitAnd => "&",
-        OP::Lt => "<",
-        OP::Gt => ">",
-        OP::Eq => "=",
-        OP::And => "&&",
-        OP::Or => "||",
+        OP::Plus => r"+",
+        OP::Minus => r"-",
+        OP::Times => r"*",
+        OP::Div => r"/",
+        OP::Lshift => r"<<",
+        OP::BitOr => r"|",
+        OP::BitAnd => r"&",
+        OP::Lt => r"<",
+        OP::Gt => r">",
+        OP::Eq => r"=",
+        OP::And => r"&&",
+        OP::Or => r"||",
     }
 }
 
-const fn show_uop(uop : &UOP) -> &'static str {
+pub const fn show_uop(uop : &UOP) -> &'static str {
     match uop {
         UOP::Not => "uop",
     }
 }
 
-fn show_token_static(token: &Token) -> &'static str {
+pub fn show_token_static(token: &Token) -> &'static str {
     match token {
         Token::Op(op) => show_op(op),
         Token::Uop(uop) => show_uop(uop),
-        Token::Lparen => "(",
-        Token::Rparen => ")",
-        Token::Lcurly => "{",
-        Token::Rcurly => "}",
-        Token::Lbrac => "[",
-        Token::Rbrac => "]",
-        Token::Colon => ":",
-        Token::Comma => ",",
-        Token::While => "while",
-        Token::Do => "do",
-        Token::If => "if",
-        Token::Then => "then",
-        Token::Else => "else",
-        Token::Assign => ":=",
-        Token::True => "true",
-        Token::False => "false",
-        Token::Input => "input",
-        Token::Output => "output",
-        Token::Array => "array",
-        Token::Int => "int",
-        Token::Bool => "bool",
-        Token::Let => "let",
-        Token::Function => "function",
-        Token::Return => "return",
+        Token::Lparen => r"(",
+        Token::Rparen => r")",
+        Token::Lcurly => r"{",
+        Token::Rcurly => r"}",
+        Token::Lbrac => r"[",
+        Token::Rbrac => r"]",
+        Token::Colon => r":",
+        Token::Comma => r",",
+        Token::While => r"while",
+        Token::Do => r"do",
+        Token::If => r"if",
+        Token::Then => r"then",
+        Token::Else => r"else",
+        Token::Assign => r":=",
+        Token::True => r"true",
+        Token::False => r"false",
+        Token::Input => r"input",
+        Token::Output => r"output",
+        Token::Array => r"array",
+        Token::Int => r"int",
+        Token::Bool => r"bool",
+        Token::Let => r"let",
+        Token::Function => r"function",
+        Token::Return => r"return",
         _ => todo!(),
     }
 }
 
-fn show_token(token: &Token) -> String {
+pub fn show_token(token: &Token) -> String {
     match token {
         Token::Num(val) => val.to_string(),
         Token::Ident(identifier) => identifier.clone(),
@@ -126,7 +126,7 @@ fn show_token(token: &Token) -> String {
     }
 }
 
-pub fn print_token_list(token_list : &Vec<TokLoc>) {
+pub fn print_token_list(token_list : &[TokLoc]) {
     for tokloc in token_list.iter() {
         println!("{}: {}", tokloc.loc, show_token(&tokloc.tok));
     }
@@ -200,16 +200,18 @@ pub fn lex(s: &str, mut pos: usize, mut line_n: usize) -> Vec<TokLoc> {
         else if let Some(identifyer) = ident_re.find(&s[pos..]) {
             let id = identifyer.as_str();
             if let Some(token) = keywords.get(id) {
+                //println!("OMG IT MATCHED {}", identifyer.as_str());
                 res.push(TokLoc {tok: token.clone(), loc: line_n});
             }
             else {
+                //println!("DIDNT MATCHED {}", identifyer.as_str());
                 res.push(TokLoc {tok: Token::Ident(id.to_string()), loc: line_n});
             }
             pos += identifyer.end();
         }
         else if let Some(tok) = keyword_re.find(&s[pos..]) {
-            let name = tok.as_str();
-            res.push(TokLoc {tok: Token::Ident(name.to_string()), loc: line_n});
+            let id = tok.as_str();
+            res.push(TokLoc {tok: keywords.get(id).unwrap().clone(), loc: line_n});
             pos += tok.end();
         }
         else if let Some(num) = number_re.find(&s[pos..]) {
