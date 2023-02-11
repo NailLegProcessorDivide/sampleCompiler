@@ -3,6 +3,7 @@ use std::io::{Read};
 
 use crate::source_ast::{Prog, parse_program};
 use crate::tokens::{print_token_list, lex};
+use crate::type_check::{type_prog};
 
 pub fn front_end (filename : &str, debug : bool) -> Prog {
     let mut file = File::open(filename).unwrap();

@@ -9,6 +9,7 @@ mod compile_function;
 mod const_prop;
 mod source_ast;
 mod tokens;
+mod type_check;
 mod x86;
 mod unnest_exp;
 mod front_end;

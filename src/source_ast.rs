@@ -47,7 +47,7 @@ pub enum Stmt {
     In(ID),
     Out(ID),
     Return(Option<ID>),
-    Loc(Box<Stmt>, i64)
+    Loc(Box<Stmt>, usize)
 }
 
 pub struct Func {
@@ -56,7 +56,7 @@ pub struct Func {
     pub ret: Typ,
     pub locals: Vec<VarDec>,
     pub body: Vec<Stmt>,
-    pub loc: Option<i64>,
+    pub loc: Option<usize>,
 }
 
 pub struct Prog {
@@ -184,6 +184,117 @@ fn parse_var_dec(mut toks: &[TokLoc]) -> (VarDec, &[TokLoc]) {
     }
 }
 
+fn parse_param(toks: &[TokLoc]) -> ((ID, Typ), &[TokLoc]) {
+    match toks {
+        [] => panic!("eof parsing function parameters"),
+        [TokLoc{tok: Token::Lparen, loc: _},
+         TokLoc{tok: Token::Ident(x), loc: _},
+         TokLoc{tok: Token::Colon, loc: _},
+         toks @ ..] => {
+            match parse_typ(toks) {
+                (_, []) => panic!("eof parsing function parameters"),
+                (t, [TokLoc{tok: Token::Rparen, loc: _}, toks @ ..]) => {
+                    ((ID::Source(x.to_string(), None), t), toks)
+                },
+                (_, [TokLoc{tok: _, loc}, ..]) => panic!("error parsing function parameter on line {}", *loc)
+            }
+        },
+        [TokLoc{tok, loc}, ..] => panic!("error parsing function parameter on line {} starting '{}'", *loc, show_token(tok))
+    }
+}
+
+fn parse_param_list(mut toks: &[TokLoc]) -> (Vec<(ID, Typ)>, &[TokLoc]) {
+    let mut params = Vec::new();
+    loop {
+        match toks {
+            [TokLoc{tok: Token::Lparen, loc: _}, ..] => {
+                let (param, rem_toks) = parse_param(toks);
+                params.push(param);
+                toks = rem_toks;
+            },
+            _ => return (params, toks)
+        }
+    }
+}
+
+fn parse_stmt(toks: &[TokLoc]) -> (Stmt, &[TokLoc]) {
+    match toks {
+        [] => panic!("eof parsing statement"),
+        [TokLoc{tok: Token::Ident(x), loc: ln}, toks @ ..] => {
+            match parse_indices(toks) {
+                (_, []) => panic!("eof parsing statement"),
+                (indices, [TokLoc{tok: Token::Assign, loc: _}, toks @ ..]) => {
+                    let (exp, toks) = parse_exp(toks);
+                    (Stmt::Loc(Box::new(Stmt::Assign(ID::Source(x.to_string(), None), indices, exp)), *ln), toks)
+                },
+                (_, [TokLoc{tok, loc}, ..]) => panic!("error parsing function parameter on line {} starting '{}'", *loc, show_token(tok))
+            }
+        },
+        [TokLoc{tok: Token::While, loc: ln}, toks @ ..] => {
+            let (e, toks) = parse_exp(toks);
+            let (s, toks) = parse_stmt(toks);
+            (Stmt::Loc(Box::new(Stmt::DoWhile(Box::new(Stmt::Stmts(Vec::new())), e, Box::new(s))), *ln), toks)
+        },
+        [TokLoc{tok: Token::Do, loc: _}, toks @ ..] => {
+            match parse_stmt(toks) {
+                (_, []) => panic!("eof in do statement"),
+                (s, [TokLoc{tok: Token::While, loc: ln}, toks @ ..]) => {
+                    let (e, toks) = parse_exp(toks);
+                    (Stmt::Loc(Box::new(Stmt::DoWhile(Box::new(s), e, Box::new(Stmt::Stmts(Vec::new())))), *ln), toks)
+                }
+                (_, [TokLoc{tok, loc}, ..]) => panic!("error parsing do statement on line {} starting '{}'", *loc, show_token(tok))
+            }
+        },
+        [TokLoc{tok: Token::If, loc: ln}, toks @ ..] => {
+            match parse_exp(toks) {
+                (_, []) => panic!("eof in if statement"),
+                (cond, [TokLoc{tok: Token::Then, loc: ln}, toks @ ..]) => {
+                    match parse_stmt(toks) {
+                        (_, []) => panic!("eof in if statement"),
+                        (then_exp, [TokLoc{tok: Token::Else, loc: ln}, toks @ ..]) => {
+                            let (else_exp, toks) = parse_stmt(toks);
+                            (Stmt::Loc(Box::new(Stmt::Ite(cond, Box::new(then_exp), Box::new(else_exp))), *ln), toks)
+                        },
+                        (_, [TokLoc{tok, loc}, ..]) => panic!("error parsing else on line {} starting '{}'", *loc, show_token(tok))
+                    }
+                },
+                (_, [TokLoc{tok, loc}, ..]) => panic!("error parsing then parameter on line {} starting '{}'", *loc, show_token(tok))
+            }
+        },
+        [TokLoc{tok: Token::Lcurly, loc: ln}, toks @ ..] => {
+            let (s_list, toks) = parse_stmt_list(toks);
+            (Stmt::Loc(Box::new(Stmt::Stmts(s_list)), *ln), toks)
+        },
+        [TokLoc{tok: Token::Input, loc: ln},
+         TokLoc{tok: Token::Ident(x), loc: _},
+         toks @ ..] => 
+             (Stmt::Loc(Box::new(Stmt::In(ID::Source(x.to_string(), None))), *ln), toks),
+        [TokLoc{tok: Token::Output, loc: ln},
+         TokLoc{tok: Token::Ident(x), loc: _},
+         toks @ ..] =>
+             (Stmt::Loc(Box::new(Stmt::Out(ID::Source(x.to_string(), None))), *ln), toks),
+        [TokLoc{tok: Token::Return, loc: ln},
+         TokLoc{tok: Token::Ident(x), loc: _},
+         toks @ ..] =>
+             (Stmt::Loc(Box::new(Stmt::Return(Some(ID::Source(x.to_string(), None)))), *ln), toks),
+        [TokLoc{tok, loc}, ..] => panic!("error parsing statement on line {} starting '{}'", *loc, show_token(tok))
+    }
+}
+
+fn parse_stmt_list(mut toks: &[TokLoc]) -> (Vec<Stmt>, &[TokLoc]) {
+    let mut stmts = Vec::new();
+    loop {
+        match toks {
+            [TokLoc{tok: Token::Rcurly, loc: _}, rem_toks @ ..] => return (stmts, rem_toks),
+            _ => {
+                let (stmt, rem_toks) = parse_stmt(toks);
+                toks = rem_toks;
+                stmts.push(stmt);
+            }
+        }
+    }
+}
+
 fn parse_var_dec_list(mut toks: &[TokLoc]) -> (Vec<VarDec>, &[TokLoc]) {
     let mut var_decs = Vec::new();
     while let Some(TokLoc{tok: Token::Let, loc: _}) = toks.get(0) {
@@ -194,9 +305,53 @@ fn parse_var_dec_list(mut toks: &[TokLoc]) -> (Vec<VarDec>, &[TokLoc]) {
     (var_decs, toks)
 }
 
+fn parse_func(toks: &[TokLoc]) -> (Func, &[TokLoc]) {
+    match toks {
+        [] => panic!("end of file looking for function"),
+        [TokLoc{tok: Token::Function, loc: func_loc}, TokLoc{tok: Token::Ident(func_name), loc: _}, toks @ ..] => {
+            match parse_param_list(toks) {
+                (_, []) => panic!("eof parsing function"),
+                (params, [TokLoc{tok: Token::Colon, loc: _}, toks @ ..]) => {
+                    if params.len() != 0 {
+                        match parse_typ(toks) {
+                            (_, []) => panic!("eof parsing function"),
+                            (t, [TokLoc{tok: Token::Lcurly, loc: _}, toks @ ..]) => {
+                                let (var_decs, toks) = parse_var_dec_list(toks);
+                                let (stmts, toks) = parse_stmt_list(toks);
+                                return (Func{ fun_name: ID::Source(func_name.to_string(), None), params: params, ret: t, locals: var_decs, body: stmts, loc: Some(*func_loc) }, toks)
+                            },
+                            (_,  [TokLoc{tok: _, loc}, ..]) => panic!("error parsing function expected '{{' on line {}", *loc)
+                        }
+                    }
+                    else {
+                        panic!("error parsing function")
+                    }
+                },
+                (_, [TokLoc{tok: _, loc}, ..]) => panic!("error parsing function on line {}", *loc)
+            }
+        },
+        [TokLoc{tok: _, loc}, ..] => panic!("error parsing function on line {}", *loc)
+    }
+}
+
+fn parse_funcs(mut toks: &[TokLoc]) -> Vec<Func> {
+    let mut funcs = Vec::new();
+    loop {
+        match toks {
+            [] => return funcs,
+            _ => {
+                let (func, rem_toks) = parse_func(toks);
+                funcs.push(func);
+                toks = rem_toks;
+            }
+        }
+    }
+}
+
 pub fn parse_program(toks: &[TokLoc]) -> Prog {
     let (var_decs, toks) = parse_var_dec_list(toks);
-    todo!()
+    let funcs = parse_funcs(toks);
+    Prog { var_dec: var_decs, funcs: funcs }
 }
 
 pub fn stmts_to_stmt(stmts: Vec<Stmt>) -> Stmt {
