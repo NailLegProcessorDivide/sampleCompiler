@@ -13,6 +13,7 @@ pub fn front_end (filename : &str, debug : bool) -> Prog {
     if debug {
         print_token_list(&toks);
     }
-    let ast = parse_program(&toks);
+    let mut ast = parse_program(&toks);
+    type_prog(&mut ast);
     todo!()
 }

@@ -1,5 +1,5 @@
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use itertools::Itertools;
 
 #[derive(Clone, PartialEq)]
@@ -82,7 +82,7 @@ pub const fn show_op(op: &OP) -> &'static str {
 
 pub const fn show_uop(uop : &UOP) -> &'static str {
     match uop {
-        UOP::Not => "uop",
+        UOP::Not => "!",
     }
 }
 
@@ -132,8 +132,8 @@ pub fn print_token_list(token_list : &[TokLoc]) {
     }
 }
 
-fn make_keyword_map() -> HashMap<&'static str, Token>{
-    let mut res = HashMap::new();
+fn make_keyword_map() -> BTreeMap<&'static str, Token>{
+    let mut res = BTreeMap::new();
     res.insert(show_token_static(&Token::Uop(UOP::Not)), Token::Uop(UOP::Not));
 
     res.insert(show_token_static(&Token::Op(OP::Plus)), Token::Op(OP::Plus));
@@ -177,10 +177,11 @@ fn make_keyword_map() -> HashMap<&'static str, Token>{
 }
 
 pub fn lex(s: &str, mut pos: usize, mut line_n: usize) -> Vec<TokLoc> {
+    let mut chr : usize = 0;
     //no const deref for string so cant do as const :(
-    let keywords : HashMap<&'static str, Token> = make_keyword_map();
+    let keywords : BTreeMap<&'static str, Token> = make_keyword_map();
 
-    let mut keyword_re_string : String = keywords.keys().cloned().map(|s| regex::escape(s)).intersperse(r"|".to_string()).collect();
+    let mut keyword_re_string : String = keywords.keys().cloned().rev().map(|s| regex::escape(s)).intersperse(r"|".to_string()).collect();
     keyword_re_string = r"\A(".to_string() + &keyword_re_string + r")";
 
     let keyword_re : regex::Regex = Regex::new(&keyword_re_string).unwrap();
@@ -192,10 +193,12 @@ pub fn lex(s: &str, mut pos: usize, mut line_n: usize) -> Vec<TokLoc> {
     while pos < s.len() {
         if let Some(white_space) = space_re.find(&s[pos..]) {
             pos += white_space.end();
+            chr += white_space.end();
         }
         else if let Some(newline) = newline_re.find(&s[pos..]) {
             line_n += 1;
             pos += newline.end();
+            chr = 0;
         }
         else if let Some(identifyer) = ident_re.find(&s[pos..]) {
             let id = identifyer.as_str();
@@ -208,19 +211,22 @@ pub fn lex(s: &str, mut pos: usize, mut line_n: usize) -> Vec<TokLoc> {
                 res.push(TokLoc {tok: Token::Ident(id.to_string()), loc: line_n});
             }
             pos += identifyer.end();
+            chr += identifyer.end();
         }
         else if let Some(tok) = keyword_re.find(&s[pos..]) {
             let id = tok.as_str();
             res.push(TokLoc {tok: keywords.get(id).unwrap().clone(), loc: line_n});
             pos += tok.end();
+            chr += tok.end();
         }
         else if let Some(num) = number_re.find(&s[pos..]) {
             //TODO: handle integers that pass regex and fail parse
             res.push(TokLoc {tok: Token::Num(num.as_str().parse::<i64>().unwrap()), loc: line_n});
             pos += num.end();
+            chr += num.end();
         }
         else {
-            println!("lex error pos = {}; line = {}", pos, line_n);
+            println!("lex error pos = {}; line = {}:{}", pos, line_n, chr);
             panic!("parser doesnt get here");
         }
     }

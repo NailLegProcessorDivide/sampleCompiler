@@ -14,7 +14,7 @@ fn is_atomic(e: &Exp) -> bool{
     }
 }
 
-fn unnest_indices(arr: ID, indicies: &Vec<Exp>, next_ident: &mut i64) -> (Vec<Stmt>, Exp) {
+fn unnest_indices(arr: ID, indicies: &Vec<Exp>, next_ident: &mut usize) -> (Vec<Stmt>, Exp) {
     if indicies.len() < 1 {
         (Vec::new(), Exp::Ident (arr, indicies.clone()))
     }
@@ -31,7 +31,7 @@ fn unnest_indices(arr: ID, indicies: &Vec<Exp>, next_ident: &mut i64) -> (Vec<St
     }
 }
 
-fn unnest_exp_atomic(e: Exp, next_ident: &mut i64) -> (Vec<Stmt>, Exp) {
+fn unnest_exp_atomic(e: Exp, next_ident: &mut usize) -> (Vec<Stmt>, Exp) {
     let (mut s, f) = unnest_exp(e, next_ident);
     if is_atomic(&f) {
         (s, f)
@@ -44,7 +44,7 @@ fn unnest_exp_atomic(e: Exp, next_ident: &mut i64) -> (Vec<Stmt>, Exp) {
     }
 }
 
-fn unnest_exp_for_test(e: Exp, next_ident: &mut i64) -> (Vec<Stmt>, Exp) {
+fn unnest_exp_for_test(e: Exp, next_ident: &mut usize) -> (Vec<Stmt>, Exp) {
     let (mut s, f) = unnest_exp(e, next_ident);
     match f {
         Exp::Ident(fid, l) => {
@@ -62,7 +62,7 @@ fn unnest_exp_for_test(e: Exp, next_ident: &mut i64) -> (Vec<Stmt>, Exp) {
     }
 }
 
-fn unnest_exp(e: Exp, next_ident: &mut i64) -> (Vec<Stmt>, Exp) {
+fn unnest_exp(e: Exp, next_ident: &mut usize) -> (Vec<Stmt>, Exp) {
     match e {
         Exp::Num(i) => (Vec::new(), Exp::Num(i)),
         Exp::Bool(b) => (Vec::new(), Exp::Bool(b)),
@@ -109,7 +109,7 @@ fn unnest_exp(e: Exp, next_ident: &mut i64) -> (Vec<Stmt>, Exp) {
     }
 }
 
-fn unnest_stmt(s: Stmt, next_ident: &mut i64) -> Vec<Stmt> {
+fn unnest_stmt(s: Stmt, next_ident: &mut usize) -> Vec<Stmt> {
     match s {
         Stmt::Assign(x, es, e) => {
             if es.is_empty() {
@@ -152,6 +152,6 @@ fn unnest_stmt(s: Stmt, next_ident: &mut i64) -> Vec<Stmt> {
 }
 
 pub fn unnest(stmts: &Vec<Stmt>) -> Vec<Stmt> {
-    let mut next_ident: i64 = 0;
+    let mut next_ident: usize = 0;
     stmts.iter().map(|stmt| unnest_stmt(stmt.clone(), &mut next_ident)).flatten().collect()
 }

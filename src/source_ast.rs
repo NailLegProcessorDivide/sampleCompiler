@@ -1,23 +1,24 @@
 use crate::tokens::{self, print_token_list};
 use tokens::{OP, UOP, Token, TokLoc, show_token};
 
-#[derive(Clone)]
+#[derive(Clone, Copy, Hash, Eq, PartialEq)]
 pub enum Scope {
     Global,
     Parameter,
     Local
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash, Eq, PartialEq)]
 pub enum ID {
     Source(String, Option<Scope>),
-    Temp(String, i64)
+    Temp(String, usize)
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum Typ {
     Int,
     Bool,
-    Array(i64)
+    Array(usize)
 }
 
 #[derive(Clone)]
@@ -68,7 +69,7 @@ fn parse_typ (toks: &[TokLoc]) -> (Typ, &[TokLoc]) {
     match toks {
         [TokLoc {tok: Token::Int, loc: _}, toks @ ..] => (Typ::Int, toks),
         [TokLoc {tok: Token::Bool, loc: _}, toks @ ..]=> (Typ::Bool, toks),
-        [TokLoc {tok: Token::Array, loc: _}, TokLoc {tok: Token::Num(array_size), loc: _}, toks @ ..] => (Typ::Array(*array_size), toks),
+        [TokLoc {tok: Token::Array, loc: _}, TokLoc {tok: Token::Num(array_size), loc: _}, toks @ ..] => (Typ::Array(*array_size as usize), toks),
         _ => panic!("type error at")
     }
 }
