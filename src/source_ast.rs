@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use crate::tokens::{self, print_token_list};
 use tokens::{OP, UOP, Token, TokLoc, show_token};
 
@@ -8,11 +10,47 @@ pub enum Scope {
     Local
 }
 
-#[derive(Clone, Hash, Eq, PartialEq)]
+#[derive(Clone)]
 pub enum ID {
     Source(String, Option<Scope>),
     Temp(String, usize)
 }
+
+//doesnt check scope
+impl Hash for ID {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            ID::Source(n, _) => {
+                n.hash(state);
+            }
+            ID::Temp(n, idx) => {
+                n.hash(state);
+                idx.hash(state);
+            },
+        }
+    }
+}
+
+//doesnt check scope
+impl PartialEq for ID {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            ID::Source(n, _) => {
+                match other {
+                    ID::Source(on, _) => n == on,
+                    _ => false,
+                }
+            },
+            ID::Temp(n, idx) => {
+                match other {
+                    ID::Temp(on, oidx) => n == on && idx == oidx,
+                    _ => false,
+                }
+            },
+        }
+    }
+}
+impl Eq for ID {}
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum Typ {

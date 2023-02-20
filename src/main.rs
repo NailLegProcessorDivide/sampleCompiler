@@ -2,7 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 
-use source_ast::Prog;
+use source_ast::{Prog, Func, Stmt, ID, Typ};
 
 mod block_structure;
 mod compile_function;
@@ -48,7 +48,17 @@ fn main() -> std::io::Result<()> {
     let chopped_filename = chop_file_name(&input_filename[..]);
     let output_filename = format!("{}{}", chopped_filename, ".s");
 
-    let program : Prog = front_end::front_end(&input_filename, true); 
+    let mut program : Prog = front_end::front_end(&input_filename, true);
+    let mut main : Func = Func {
+        fun_name: ID::Source("main".to_string(), None),
+        params: Vec::new(),
+        ret: Typ::Int,
+        locals: Vec::new(),
+        body: program.var_dec.iter().map(|var| Stmt::Assign(var.var_name.clone(), Vec::new(), var.init.clone())).collect(),
+        loc: None,
+    };
+    main.body.push(Stmt::Return(None));
+    program.funcs.push(main);
     /*/
     let mut file = File::create(output_filename)?;
     write_header(&mut file);
