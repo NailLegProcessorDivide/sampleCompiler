@@ -2,6 +2,7 @@
 
 use crate::source_ast::Scope;
 
+#[derive(Hash, PartialEq, Eq)]
 pub enum Var {
     Vreg(i64),
     Stack(i64),

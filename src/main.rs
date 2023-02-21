@@ -1,8 +1,6 @@
 use std::env;
-use std::fs::File;
-use std::io::Write;
 
-use source_ast::{Prog, Func, Stmt, ID, Typ};
+use source_ast::Prog;
 
 mod block_structure;
 mod compile_function;
@@ -13,6 +11,8 @@ mod type_check;
 mod x86;
 mod unnest_exp;
 mod front_end;
+mod interp;
+mod compile;
 
 fn chop_file_name(filename: &str) -> &str
 {
@@ -23,46 +23,44 @@ fn print_usage() {
     println!("usage:");
 }
 
-fn write_header(file: &mut File) {
-    write!(file, "[section .text align=16]\n").ok();
-    write!(file, "global main\n\n").ok();
-    write!(file, "extern signal_error\n").ok();
-    write!(file, "extern input\n").ok();
-    write!(file, "extern output\n").ok();
-    write!(file, "extern allocate1\n").ok();
-    write!(file, "extern allocate2\n").ok();
-    write!(file, "extern allocate3\n").ok();
-    write!(file, "extern allocate4\n").ok();
-    write!(file, "extern allocate5\n").ok();
-    write!(file, "extern allocate6\n").ok();
-    write!(file, "extern allocate7\n\n").ok();
-}
-
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        print_usage();
-        return Ok(());
+    let str_args : Vec<&str> = args.iter().map(|arg| arg.as_str()).collect();
+    let mut arg_slice : &[&str] = &str_args[1..];
+    let mut opt_filename : Option<&str> = None;
+    let mut to_interp : bool = false;
+    while arg_slice.len() != 0 {
+        match arg_slice {
+            [fname] => {
+                opt_filename = Some(fname);
+                arg_slice = &[];
+            }
+            ["--interp", args @ ..] => {
+                to_interp = true;
+                arg_slice = args;
+            }
+            [arg, ..] => panic!("unknown argument \"{}\"", *arg),
+            [] => panic!("unreachable")
+        }
     }
-    let input_filename = args.into_iter().nth(1).unwrap();
-    let chopped_filename = chop_file_name(&input_filename[..]);
-    let output_filename = format!("{}{}", chopped_filename, ".s");
-
-    let mut program : Prog = front_end::front_end(&input_filename, true);
-    let mut main : Func = Func {
-        fun_name: ID::Source("main".to_string(), None),
-        params: Vec::new(),
-        ret: Typ::Int,
-        locals: Vec::new(),
-        body: program.var_dec.iter().map(|var| Stmt::Assign(var.var_name.clone(), Vec::new(), var.init.clone())).collect(),
-        loc: None,
+    let filename = match opt_filename {
+        Some(name) => name,
+        None => panic!("no file name given")
     };
-    main.body.push(Stmt::Return(None));
-    program.funcs.push(main);
+    let input_filename = filename;
+    let chopped_filename = chop_file_name(input_filename);
+    let output_filename: String = format!("{}{}", chopped_filename, ".s");
+
+    let mut program : Prog = front_end::front_end(input_filename, true);
+
+    if to_interp {
+        interp::interp(&program);
+    }
+    else {
+        compile::compile(&mut program, &output_filename);
+    }
+
     /*/
-    let mut file = File::create(output_filename)?;
-    write_header(&mut file);
-    let _functions = compile_function::compile_fun(false, input_filename, HashSet::new(), );
     */
     Ok(())
 }

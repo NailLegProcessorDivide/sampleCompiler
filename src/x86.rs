@@ -50,7 +50,7 @@ pub enum BinopName {
     Zxor
 }
 
-pub enum Instruction {
+pub enum Instruction_x64 {
     Zlabel(String),
     Zbinop(BinopName, DestSrc)
 }

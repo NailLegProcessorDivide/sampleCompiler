@@ -83,14 +83,15 @@ fn type_exp(ln: Option<usize>, env: &Env, exp: &mut Exp) -> Typ{
     }
 }
 
-fn get_var_types(scope: &Scope, vars: &[VarDec]) -> HashMap<ID, (Typ, Scope)> {
+fn get_var_types(scope: Scope, vars: &mut [VarDec]) -> HashMap<ID, (Typ, Scope)> {
     let mut var_types : HashMap<ID, (Typ, Scope)> = HashMap::new();
-    for var in vars.iter() {
+    for var in vars.iter_mut() {
         if var_types.contains_key(&var.var_name) {
             panic!("duplicate function")
         }
         else {
-            var_types.insert(var.var_name.clone(), (var.typ, *scope));
+            var_types.insert(var.var_name.clone(), (var.typ, scope));
+            add_scope(&mut var.var_name, scope)
         }
     }
     var_types
@@ -203,7 +204,7 @@ fn check_return_paths(stmts : &[Stmt]) -> bool{
 
 fn type_fun(env: &Env, func: &mut Func) {
     let param_env = get_param_types(func.loc, &func.params);
-    let local_env = get_var_types(&Scope::Local, &func.locals);
+    let local_env = get_var_types(Scope::Local, &mut func.locals);
     let mut vars = env.vars.clone();
     for (param_id, param_val) in param_env.iter() {
         vars.insert(param_id.clone(), param_val.clone());
@@ -228,8 +229,8 @@ fn type_fun(env: &Env, func: &mut Func) {
 
 pub fn type_prog(prog : &mut Prog) {
     let env = Env{funcs: get_function_types(&prog.funcs),
-                       vars: get_var_types(&Scope::Global, &prog.var_dec)};
-    for var_dec in prog.var_dec.iter_mut() {
+                       vars: get_var_types(Scope::Global, &mut prog.globals)};
+    for var_dec in prog.globals.iter_mut() {
         type_var_dec(&Scope::Global, &env, var_dec);
     }
     for func in prog.funcs.iter_mut() {

@@ -99,7 +99,7 @@ pub struct Func {
 }
 
 pub struct Prog {
-    pub var_dec : Vec<VarDec>,
+    pub globals : Vec<VarDec>,
     pub funcs : Vec<Func>,
 }
 
@@ -388,9 +388,9 @@ fn parse_funcs(mut toks: &[TokLoc]) -> Vec<Func> {
 }
 
 pub fn parse_program(toks: &[TokLoc]) -> Prog {
-    let (var_decs, toks) = parse_var_dec_list(toks);
+    let (globals, toks) = parse_var_dec_list(toks);
     let funcs = parse_funcs(toks);
-    Prog { var_dec: var_decs, funcs: funcs }
+    Prog { globals: globals, funcs: funcs }
 }
 
 pub fn stmts_to_stmt(stmts: Vec<Stmt>) -> Stmt {
