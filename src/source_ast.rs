@@ -114,7 +114,6 @@ fn parse_typ (toks: &[TokLoc]) -> (Typ, &[TokLoc]) {
 
 fn parse_args(mut toks: &[TokLoc]) -> (Vec<Exp>, &[TokLoc]) {
     let mut args = Vec::new();
-    println!("args");
     //while true feels scuffed but its probably fine
     loop {
         let (exp, rem_toks) = parse_exp(toks);

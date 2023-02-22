@@ -2,7 +2,7 @@ use regex::Regex;
 use std::collections::BTreeMap;
 use itertools::Itertools;
 
-#[derive(Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum OP {
     Plus,
     Minus,
@@ -58,7 +58,7 @@ pub struct TokLoc {
     pub loc: usize,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum UOP {
     Not
 }

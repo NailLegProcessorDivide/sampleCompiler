@@ -51,7 +51,7 @@ fn main() -> std::io::Result<()> {
     let chopped_filename = chop_file_name(input_filename);
     let output_filename: String = format!("{}{}", chopped_filename, ".s");
 
-    let mut program : Prog = front_end::front_end(input_filename, true);
+    let mut program : Prog = front_end::front_end(input_filename, false);
 
     if to_interp {
         interp::interp(&program);
