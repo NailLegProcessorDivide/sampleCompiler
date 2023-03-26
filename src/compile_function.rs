@@ -22,6 +22,8 @@ pub fn compile_fun_x64(safe: bool, globals: &HashSet<Var>, func: &Func) -> (ID, 
               func.body.iter().map(|stmt| stmt.clone())).collect::<Vec<Stmt>>();
     let (_, stmts) = const_prop::prop_stmts(HashMap::new(), &ast);
     let no_nest_ast = unnest_exp::unnest(&stmts);
-    let cfg = block_structure::build_cfg(&no_nest_ast);
-    todo!();
+    let cfg = block_structure::ast_to_cfg(&no_nest_ast);
+    println!("fun len {}", cfg.len());
+    (func.fun_name.clone(), Vec::new())
+    //todo!();
 }
