@@ -21,7 +21,7 @@ fn write_header(file: &mut File) {
     write!(file, "extern allocate7\n\n").ok();
 }
 
-fn id_to_var(global : &ID) -> Var {
+pub fn id_to_var(global : &ID) -> Var {
     match global {
         ID::Source(name, Some(Scope::Global)) => Var::NamedSource(name.clone(), Scope::Global),
         _ => panic!("doesnt get here")

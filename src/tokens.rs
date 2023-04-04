@@ -2,7 +2,7 @@ use regex::Regex;
 use std::collections::BTreeMap;
 use itertools::Itertools;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub enum OP {
     Plus,
     Minus,
@@ -58,7 +58,7 @@ pub struct TokLoc {
     pub loc: usize,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub enum UOP {
     Not
 }
@@ -176,7 +176,7 @@ fn make_keyword_map() -> BTreeMap<&'static str, Token>{
     res
 }
 
-pub fn lex(s: &str, mut pos: usize, mut line_n: usize) -> Vec<TokLoc> {
+pub fn lex(s: &str, mut pos: usize, mut line_n: usize) -> Result<Vec<TokLoc>, String> {
     let mut chr : usize = 0;
     //no const deref for string so cant do as const :(
     let keywords : BTreeMap<&'static str, Token> = make_keyword_map();
@@ -226,10 +226,9 @@ pub fn lex(s: &str, mut pos: usize, mut line_n: usize) -> Vec<TokLoc> {
             chr += num.end();
         }
         else {
-            println!("lex error pos = {}; line = {}:{}", pos, line_n, chr);
-            panic!("parser doesnt get here");
+            return Err(format!("lex error pos = {}; line = {}:{}\nparser doesnt get here", pos, line_n + 1, chr))
         }
     }
-    return res;
+    return Ok(res);
 
 }

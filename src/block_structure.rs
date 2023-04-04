@@ -1,6 +1,6 @@
 
 
-use crate::{source_ast::{Scope, Stmt, Exp, ID}, tokens::{OP, UOP, Token}};
+use crate::{source_ast::{Scope, Stmt, Exp, ID, TypedExp, scope_to_string}, tokens::{OP, UOP}};
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub enum Var {
@@ -11,13 +11,14 @@ pub enum Var {
     NamedTmp(String, usize)
 }
 
-#[derive(Clone)]
-enum AtomicExp {
+#[derive(Clone, Eq, PartialEq)]
+pub enum AtomicExp {
     Ident(Var),
     Num(i64)
 }
 
-enum BlockElem {
+#[derive(Clone, Eq, PartialEq)]
+pub enum BlockElem {
     AssignOp(Var, AtomicExp, OP, AtomicExp),
     AssignAtom(Var, AtomicExp),
     Ld(Var, Var, AtomicExp),
@@ -27,33 +28,72 @@ enum BlockElem {
     NullCheck(Var)
 }
 
-#[derive(Clone)]
-enum TestOp {
+#[derive(Clone, Eq, PartialEq)]
+pub enum TestOp {
     Lt,
     Gt,
     Eq
 }
 
-#[derive(Clone)]
-struct Test {
-    exp1 : AtomicExp,
-    op : TestOp,
-    exp2 : AtomicExp,
+#[derive(Clone, Eq, PartialEq)]
+pub struct Test {
+    pub exp1 : AtomicExp,
+    pub op : TestOp,
+    pub exp2 : AtomicExp,
 }
 
-#[derive(Clone)]
-enum NextBlock {
+#[derive(Clone, Eq, PartialEq)]
+pub enum NextBlock {
     Return(Option<Var>),
     Next(usize),
     Branch(Test, usize, usize)
 }
 
+#[derive(Clone, Eq, PartialEq)]
 pub struct CFGEntry {
-    bnum : usize,
-    elems : Vec<BlockElem>,
-    next : NextBlock,
-    started : bool,
-    finished : bool
+    pub bnum : usize,
+    pub elems : Vec<BlockElem>,
+    pub next : NextBlock,
+    pub started : bool,
+    pub finished : bool
+}
+
+pub fn var_to_string(v : &Var) -> String {
+    match v {
+        Var::Vreg(r) => format!("reg_{}", r),
+        Var::Stack(n) => format!("stack_{}", n),
+        Var::Global(g) => format!("g_{}", g),
+        Var::NamedSource(st, sc) => format!("ns_{}_{}", st, scope_to_string(&Some(*sc))),
+        Var::NamedTmp(s, n) => format!("tmp_{}_{}", s, n),
+    }
+}
+
+pub fn atomic_to_string(exp : &AtomicExp) -> String {
+    match exp {
+        AtomicExp::Ident(id) => var_to_string(id),
+        AtomicExp::Num(n) => format!("{n}"),
+    }
+}
+
+pub fn test_op_to_str(op : TestOp) -> &'static str {
+    match op {
+        TestOp::Lt => "<",
+        TestOp::Gt => ">",
+        TestOp::Eq => "==",
+    }
+}
+
+pub fn test_to_string(test : &Test) -> String {
+    format!("{} {} {}", atomic_to_string(&test.exp1), test_op_to_str(test.op.clone()), atomic_to_string(&test.exp2))
+}
+
+fn atomic_op_to_test_op(op : &OP) -> TestOp {
+    match op {
+        OP::Lt => TestOp::Lt,
+        OP::Eq => TestOp::Eq,
+        OP::Gt => TestOp::Gt,
+        _ => panic!("unexpected op")
+    }
 }
 
 fn id_to_var(x : &ID) -> Var {
@@ -64,8 +104,8 @@ fn id_to_var(x : &ID) -> Var {
     }
 }
 
-fn exp_to_atomic(e : &Exp) -> AtomicExp{
-    match e {
+fn exp_to_atomic(e : &TypedExp) -> AtomicExp{
+    match &e.exp {
         Exp::Ident(id, es) if es.len() == 0 => AtomicExp::Ident(id_to_var(id)),
         Exp::Num(n) => AtomicExp::Num(*n),
         Exp::Bool(b) => AtomicExp::Num(*b as i64),
@@ -73,9 +113,9 @@ fn exp_to_atomic(e : &Exp) -> AtomicExp{
     }
 }
 
-fn flat_e_to_assign(x : &ID, e: &Exp) -> Vec<BlockElem> {
+fn flat_e_to_assign(x : &ID, e: &TypedExp) -> Vec<BlockElem> {
     let v = id_to_var(x);
-    match e {
+    match &e.exp {
         Exp::Ident(id, es) if es.len() == 0 => {
             vec![BlockElem::AssignAtom(v, AtomicExp::Ident(id_to_var(id)))]
         },
@@ -92,7 +132,7 @@ fn flat_e_to_assign(x : &ID, e: &Exp) -> Vec<BlockElem> {
                 }
                 AtomicExp::Ident(_) => {
                     blk.push(BlockElem::AssignOp(tmp_var.clone(), ae.clone(), OP::Plus, AtomicExp::Num(1)));
-                    blk.push(BlockElem::AssignOp(tmp_var.clone(), ae.clone(), OP::Lshift, AtomicExp::Num(3)));
+                    blk.push(BlockElem::AssignOp(tmp_var.clone(), AtomicExp::Ident(tmp_var.clone()), OP::Lshift, AtomicExp::Num(3)));
                     blk.push(BlockElem::Ld(v, id_to_var(id), AtomicExp::Ident(tmp_var)));
                 },
             }
@@ -122,7 +162,7 @@ fn flat_exp_to_test (e : &Exp) -> Test {
         Exp::Call(_, _) => panic!("call in test"),
         Exp::Num(_) => panic!("num in test"),
         Exp::Bool(b) => Test{exp1: AtomicExp::Num((*b) as i64), op: TestOp::Eq, exp2: AtomicExp::Num(1)},
-        Exp::Op(id1, op, id2) => Test{exp1: exp_to_atomic(&**id1), op: TestOp::Eq, exp2: exp_to_atomic(&**id2)},
+        Exp::Op(id1, op, id2) => Test{exp1: exp_to_atomic(&**id1), op: atomic_op_to_test_op(op), exp2: exp_to_atomic(&**id2)},
         Exp::Uop(UOP::Not, id) => Test{exp1: exp_to_atomic(&**id), op: TestOp::Eq, exp2: AtomicExp::Num(0)},
         Exp::Array(_) => panic!("array in test"),
         Exp::Ident(_, _) => panic!("array index in test")
@@ -180,17 +220,17 @@ fn build_cfg(ast : &[Stmt], block_num: &mut usize, head_block : usize, next_bloc
                 wip_bnum = *block_num;
                 *block_num += 1;
                 let mut header = if let Stmt::Stmts(stmts0) = &**s0 {
-                    build_cfg(&stmts0, block_num, s0_b, &NextBlock::Branch(flat_exp_to_test(&e), s1_b, wip_bnum))
+                    build_cfg(&stmts0, block_num, s0_b, &NextBlock::Branch(flat_exp_to_test(&e.exp), s1_b, wip_bnum))
                 }
                 else {
-                    build_cfg(&(vec![*s0.clone()]), block_num, s0_b, &NextBlock::Branch(flat_exp_to_test(&e), s1_b, wip_bnum))
+                    build_cfg(&(vec![*s0.clone()]), block_num, s0_b, &NextBlock::Branch(flat_exp_to_test(&e.exp), s1_b, wip_bnum))
                 };
 
                 let mut body = if let Stmt::Stmts(stmts1) = &**s1 {
-                     build_cfg(&stmts1, block_num, s1_b, &NextBlock::Branch(flat_exp_to_test(&e), s1_b, wip_bnum))
+                     build_cfg(&stmts1, block_num, s1_b, &NextBlock::Branch(flat_exp_to_test(&e.exp), s1_b, wip_bnum))
                 }
                 else {
-                    build_cfg(&(vec![*s1.clone()]), block_num, s1_b, &NextBlock::Branch(flat_exp_to_test(&e), s1_b, wip_bnum))
+                    build_cfg(&(vec![*s1.clone()]), block_num, s1_b, &NextBlock::Branch(flat_exp_to_test(&e.exp), s1_b, wip_bnum))
                 };
                 
                 blocks.append(&mut header);
@@ -203,7 +243,7 @@ fn build_cfg(ast : &[Stmt], block_num: &mut usize, head_block : usize, next_bloc
                 *block_num += 1;
                 let s1_b = *block_num;
                 *block_num += 1;
-                blocks.push(make_cfg_entry(wip_bnum, wip_elems, NextBlock::Branch(flat_exp_to_test(&e), s0_b, s1_b)));
+                blocks.push(make_cfg_entry(wip_bnum, wip_elems, NextBlock::Branch(flat_exp_to_test(&e.exp), s0_b, s1_b)));
                 wip_bnum = *block_num;
                 *block_num += 1;
                 let mut then_blk = if let Stmt::Stmts(stmts0) = &**s0 {
@@ -261,8 +301,18 @@ fn build_cfg(ast : &[Stmt], block_num: &mut usize, head_block : usize, next_bloc
     blocks
 }
 
+
+
+fn clean_ast(cfg : Vec<CFGEntry>) -> Vec<CFGEntry> {
+    cfg
+}
+
 pub fn ast_to_cfg(ast : &[Stmt]) -> Vec<CFGEntry> {
     let mut counter: usize = 1;
-    build_cfg(&ast, &mut counter, 0, &NextBlock::Return(None))
+    let cfg = build_cfg(&ast, &mut counter, 0, &NextBlock::Return(None));
+    println!("{}", counter);
+    let cfg2 = clean_ast(cfg);
+    println!("{}", cfg2.len());
+    cfg2
 }
 

@@ -1,18 +1,7 @@
 use std::env;
 
-use source_ast::Prog;
+use sample_compiler_lib::{front_end, source_ast, interp, compile};
 
-mod block_structure;
-mod compile_function;
-mod const_prop;
-mod source_ast;
-mod tokens;
-mod type_check;
-mod x86;
-mod unnest_exp;
-mod front_end;
-mod interp;
-mod compile;
 
 fn chop_file_name(filename: &str) -> &str
 {
@@ -51,7 +40,10 @@ fn main() -> std::io::Result<()> {
     let chopped_filename = chop_file_name(input_filename);
     let output_filename: String = format!("{}{}", chopped_filename, ".s");
 
-    let mut program : Prog = front_end::front_end(input_filename, false);
+    let mut program : source_ast::Prog = match front_end::front_end(input_filename, false) {
+        Ok(prog) => prog,
+        Err(err) => panic!("{}", err),
+    };
 
     if to_interp {
         interp::interp(&program);
