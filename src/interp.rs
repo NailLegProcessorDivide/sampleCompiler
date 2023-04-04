@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::io;
 
-use crate::source_ast::{Prog, Func, ID, VarDec, Typ, Exp, Stmt};
+use crate::source_ast::{Prog, Func, ID, VarDec, Typ, Exp, Stmt, TypedExp};
 use crate::tokens::{OP, UOP};
 
 #[derive(Clone)]
@@ -68,7 +68,7 @@ fn do_uop(uop: UOP, v1 : Val) -> Val {
     }
 }
 
-fn get_array_address(env : &mut InterpEnv, arr : &ArrayVal, exps : &[Exp]) -> usize {
+fn get_array_address(env : &mut InterpEnv, arr : &ArrayVal, exps : &[TypedExp]) -> usize {
     if exps.len() != (*arr).sizes.len() {
         panic!("array dimension miss match")
     }
@@ -151,8 +151,8 @@ fn interp_stmt(env : &mut InterpEnv, stmt: &Stmt) -> Option<Val> {
     }
 }
 
-fn interp_exp(env : &mut InterpEnv, exp: &Exp) -> Val {
-    match exp {
+fn interp_exp(env : &mut InterpEnv, exp: &TypedExp) -> Val {
+    match &exp.exp {
         Exp::Ident(i, inds) if inds.len() == 0 => env.vars.get(i).unwrap().clone(),
         Exp::Ident(i, inds) => {
             match env.vars.get(i).unwrap().clone() {

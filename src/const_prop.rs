@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{source_ast::{Exp, Stmt, ID}, tokens::OP};
+use crate::{source_ast::{Exp, Stmt, ID, TypedExp}, tokens::OP};
 
 fn might_have_effect(e : &Exp) -> bool {
     match e {
@@ -9,16 +9,17 @@ fn might_have_effect(e : &Exp) -> bool {
         Exp::Num(_) => false,
         Exp::Bool(_) => false,
         Exp::Op(_, OP::Div, _) => true,
-        Exp::Op(e1, _, e2) => might_have_effect(e1) || might_have_effect(e2),
-        Exp::Uop(_, e1) => might_have_effect(e1),
-        Exp::Array(es) => es.iter().any(|e| might_have_effect(e)),
+        Exp::Op(e1, _, e2) => might_have_effect(&e1.exp) || might_have_effect(&e2.exp),
+        Exp::Uop(_, e1) => might_have_effect(&e1.exp),
+        Exp::Array(es) => es.iter().any(|e| might_have_effect(&e.exp)),
     }
 }
 
-fn fold_exp(env : &mut HashMap<ID, Exp>, e : &Exp) -> Exp {
-    match e {
+fn fold_exp(env : &mut HashMap<ID, TypedExp>, e : &TypedExp) -> TypedExp {
+    TypedExp {exp: 
+    match &e.exp {
         Exp::Ident(id, idxs) if idxs.len() == 0 => {
-            env.get(id).unwrap_or(e).clone()
+            env.get(id).unwrap_or(e).clone().exp
         }
         Exp::Ident(id, idxs) => {
             Exp::Ident(id.clone(), idxs.iter().map(|idx| fold_exp(env, idx)).collect())
@@ -26,9 +27,9 @@ fn fold_exp(env : &mut HashMap<ID, Exp>, e : &Exp) -> Exp {
         Exp::Num(n) => Exp::Num(*n),
         Exp::Bool(n) => Exp::Bool(*n),
         Exp::Op(e1, op, e2) => {
-            let o1 : Exp = fold_exp(env, e1);
-            let o2 : Exp = fold_exp(env, e2);
-            match (&o1, op, &o2) {
+            let o1 : TypedExp = fold_exp(env, e1);
+            let o2 : TypedExp = fold_exp(env, e2);
+            match (&o1.exp, op, &o2.exp) {
                 (n1, OP::Plus, Exp::Num(0)) => n1.clone(),
                 (Exp::Num(0), OP::Plus, n2) => n2.clone(),
                 (Exp::Num(n1), OP::Plus, Exp::Num(n2)) => Exp::Num(*n1 + *n2),
@@ -50,10 +51,11 @@ fn fold_exp(env : &mut HashMap<ID, Exp>, e : &Exp) -> Exp {
         Exp::Array(es) => Exp::Array(es.iter().map(|e| fold_exp(env, e)).collect()),
         Exp::Call(f, es) => Exp::Call(f.clone(), es.iter().map(|e| fold_exp(env, e)).collect()),
         _ => panic!("unimplemented")
-    }
+    },
+    typ: e.typ}
 }
 
-fn prop_stmt(env : &mut HashMap<ID, Exp>, stmt : &Stmt) -> Stmt {
+fn prop_stmt(env : &mut HashMap<ID, TypedExp>, stmt : &Stmt) -> Stmt {
     match stmt {
         Stmt::Assign(x, inds, e) if inds.len() == 0 => {
             let o1 = fold_exp(env, e);
@@ -68,7 +70,7 @@ fn prop_stmt(env : &mut HashMap<ID, Exp>, stmt : &Stmt) -> Stmt {
     }
 }
 
-pub fn prop_stmts(env: HashMap<ID, Exp>, stmts: &[Stmt]) -> (HashMap<ID, Exp>, Vec<Stmt>) {
+pub fn prop_stmts(env: HashMap<ID, TypedExp>, stmts: &[Stmt]) -> (HashMap<ID, TypedExp>, Vec<Stmt>) {
     (env, Vec::from(stmts))
     /*
     let mut stmts_out : Vec<Stmt> = Vec::new();

@@ -5,6 +5,14 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "sample_compiler_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sample_compiler"
+path = "src/main.rs"
+
 [dependencies]
 regex = "1"
 itertools = "0.8"
