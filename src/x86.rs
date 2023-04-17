@@ -1,5 +1,3 @@
-
-
 pub enum Reg {
     RAX,
     RBX,
@@ -16,23 +14,23 @@ pub enum Reg {
     R12,
     R13,
     R14,
-    R15
+    R15,
 }
 
 pub enum Displacement {
     ConcreteDisp(i64),
-    LabelDisp(String)
+    LabelDisp(String),
 }
 
 pub enum Rm {
     Zr(Reg),
-    Zm(Option<(i64, Reg)>, Option<Reg>, Option<Displacement>)
+    Zm(Option<(i64, Reg)>, Option<Reg>, Option<Displacement>),
 }
 
 pub enum DestSrc {
     ZrmI(Rm, i64),
     ZrmR(Rm, Reg),
-    ZrRm(Reg, Rm)
+    ZrRm(Reg, Rm),
 }
 
 pub enum BinopName {
@@ -47,10 +45,10 @@ pub enum BinopName {
     Zsub,
     Zsbb,
     Ztest,
-    Zxor
+    Zxor,
 }
 
 pub enum Instruction_x64 {
     Zlabel(String),
-    Zbinop(BinopName, DestSrc)
+    Zbinop(BinopName, DestSrc),
 }
