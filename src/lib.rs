@@ -5,6 +5,7 @@ pub mod const_prop;
 pub mod front_end;
 pub mod interp;
 pub mod live_var_analysis;
+pub mod register_alloc;
 pub mod shrink_imm;
 pub mod source_ast;
 pub mod tokens;
