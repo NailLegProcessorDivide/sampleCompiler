@@ -68,13 +68,20 @@ pub fn build_annot_cfg(globals: &HashSet<Var>, func: &Func) -> Vec<(CFGEntry, CF
         .collect()
 }
 
+pub fn remove_unused_writes(globals: &HashSet<Var>, func: &Func) -> Vec<(CFGEntry, CFGAnnot)> {
+    let mut cfg = build_annot_cfg(globals, func);
+    let t_cfg = cfg.iter_mut().map(|(a, b)| (a, &*b)).collect::<Vec<_>>();
+    live_var_analysis::remove_unuesd_writes(t_cfg);
+    cfg
+}
+
 pub fn compile_fun_x64(
     safe: bool,
     globals: &HashSet<Var>,
     func: &Func,
 ) -> (ID, Vec<Instruction_x64>) {
     //shrink_imm(&mut cfg);
-    let lva_cfg = build_annot_cfg(globals, func);
+    let lva_cfg = remove_unused_writes(globals, func);
     (func.fun_name.clone(), Vec::new())
     //todo!();
 }
