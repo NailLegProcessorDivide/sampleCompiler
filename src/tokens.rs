@@ -18,7 +18,7 @@ pub enum OP {
     Or,
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Token {
     Num(i64),
     Ident(String), /* identifiers represent various names, including function
@@ -53,6 +53,7 @@ pub enum Token {
     Return,
 }
 
+#[derive(Clone, Eq, PartialEq)]
 pub struct TokLoc {
     pub tok: Token,
     pub loc: usize,

@@ -7,12 +7,14 @@ use crate::block_structure::Var;
 use crate::const_prop;
 use crate::live_var_analysis;
 use crate::live_var_analysis::CFGAnnot;
+use crate::register_alloc;
 use crate::shrink_imm::shrink_imm;
 use crate::source_ast::Typ;
 use crate::source_ast::TypedExp;
 use crate::source_ast::{Exp, Func, Stmt, VarDec, ID};
 use crate::unnest_exp;
-use crate::x86::Instruction_x64;
+use crate::x64;
+use crate::x64::Instruction_x64;
 
 fn init_var_dec_to_0(dec: &VarDec) -> Stmt {
     Stmt::Assign(
@@ -75,13 +77,21 @@ pub fn remove_unused_writes(globals: &HashSet<Var>, func: &Func) -> Vec<(CFGEntr
     cfg
 }
 
-pub fn compile_fun_x64(
-    safe: bool,
+pub fn alloc_regs(
     globals: &HashSet<Var>,
     func: &Func,
-) -> (ID, Vec<Instruction_x64>) {
+) -> (Vec<(CFGEntry, CFGAnnot)>, usize, HashMap<Var, Var>) {
+    let mut cfg = remove_unused_writes(globals, func);
+    let mut t_cfg = cfg.iter_mut().map(|(a, _)| a).collect::<Vec<_>>();
+    let (stack_slots, reg_map) = register_alloc::reg_alloc(&mut t_cfg, &func.params, 6, 7);
+    (cfg, stack_slots, reg_map)
+}
+
+pub fn compile_fun_x64(globals: &HashSet<Var>, func: &Func) -> (ID, String) {
     //shrink_imm(&mut cfg);
-    let lva_cfg = remove_unused_writes(globals, func);
-    (func.fun_name.clone(), Vec::new())
+    let (lva_cfg, stacks, var_map) = alloc_regs(globals, func);
+    let t_cfg = lva_cfg.iter().map(|(a, _)| a).collect::<Vec<_>>();
+    let asm = x64::cfg_to_x64(&t_cfg, stacks);
+    (func.fun_name.clone(), x64::asm_to_string(&asm))
     //todo!();
 }

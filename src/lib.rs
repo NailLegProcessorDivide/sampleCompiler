@@ -1,3 +1,4 @@
+pub mod aa64;
 pub mod block_structure;
 pub mod compile;
 pub mod compile_function;
@@ -11,4 +12,4 @@ pub mod source_ast;
 pub mod tokens;
 pub mod type_check;
 pub mod unnest_exp;
-pub mod x86;
+pub mod x64;

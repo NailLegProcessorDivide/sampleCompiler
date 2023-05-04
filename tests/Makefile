@@ -11,7 +11,7 @@ FORMAT = elf64
 PREFIX =
 endif
 
-COMPILER := ../src/compile.byte
+COMPILER := ../target/release/sample_compiler
 EXEC_FILES := $(patsubst %.expl,%.exe,$(wildcard *.expl))
 
 .PHONY : all clean
