@@ -7,8 +7,8 @@ use crate::{
 
 #[derive(Hash, PartialEq, Eq, Clone)]
 pub enum Var {
-    Vreg(i64),
-    Stack(i64),
+    Vreg(usize),
+    Stack(isize),
     Global(String),
     NamedSource(String, Scope),
     NamedTmp(String, usize),
@@ -27,7 +27,7 @@ pub enum BlockElem {
     Ld(Var, Var, AtomicExp),
     St(Var, AtomicExp, AtomicExp),
     Call(Option<Var>, String, Vec<AtomicExp>),
-    BoundCheck(AtomicExp, AtomicExp),
+    BoundCheck(AtomicExp, Var),
     NullCheck(Var),
 }
 
@@ -65,7 +65,7 @@ pub fn var_to_string(v: &Var) -> String {
     match v {
         Var::Vreg(r) => format!("reg_{}", r),
         Var::Stack(n) => format!("stack_{}", n),
-        Var::Global(g) => format!("g_{}", g),
+        Var::Global(g) => format!("global_{}", g),
         Var::NamedSource(st, sc) => format!("ns_{}_{}", st, scope_to_string(&Some(*sc))),
         Var::NamedTmp(s, n) => format!("tmp_{}_{}", s, n),
     }
@@ -137,10 +137,7 @@ fn flat_e_to_assign(x: &ID, e: &TypedExp) -> Vec<BlockElem> {
                 id_to_var(id),
                 AtomicExp::Num(0),
             ));
-            blk.push(BlockElem::BoundCheck(
-                ae.clone(),
-                AtomicExp::Ident(tmp_var.clone()),
-            ));
+            blk.push(BlockElem::BoundCheck(ae.clone(), tmp_var.clone()));
             match ae {
                 AtomicExp::Num(n) => {
                     blk.push(BlockElem::Ld(v, id_to_var(id), AtomicExp::Num((n + 1) * 8)))
@@ -256,10 +253,7 @@ fn build_cfg(
                 let get_len = BlockElem::Ld(tmp_var.clone(), id_to_var(&id), AtomicExp::Num(0));
                 wip_elems.push(BlockElem::NullCheck(id_to_var(&id)));
                 wip_elems.push(get_len);
-                wip_elems.push(BlockElem::BoundCheck(
-                    idx.clone(),
-                    AtomicExp::Ident(tmp_var.clone()),
-                ));
+                wip_elems.push(BlockElem::BoundCheck(idx.clone(), tmp_var.clone()));
                 match idx {
                     AtomicExp::Num(n) => {
                         wip_elems.push(BlockElem::St(
@@ -277,9 +271,9 @@ fn build_cfg(
                         ));
                         wip_elems.push(BlockElem::AssignOp(
                             tmp_var.clone(),
-                            idx,
-                            OP::Times,
-                            AtomicExp::Num(8),
+                            AtomicExp::Ident(tmp_var.clone()),
+                            OP::Lshift,
+                            AtomicExp::Num(3),
                         ));
                         wip_elems.push(BlockElem::St(
                             id_to_var(&id),
@@ -522,6 +516,6 @@ pub fn clean_cfg(cfg: &mut Vec<CFGEntry>) {
 
 pub fn ast_to_cfg(ast: &[Stmt]) -> Vec<CFGEntry> {
     let mut counter: usize = 1;
-    let mut cfg = build_cfg(&ast, &mut counter, 0, &NextBlock::Return(None));
+    let cfg = build_cfg(&ast, &mut counter, 0, &NextBlock::Return(None));
     cfg
 }

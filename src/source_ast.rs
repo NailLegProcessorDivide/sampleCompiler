@@ -102,7 +102,7 @@ pub struct Func {
     pub loc: Option<usize>,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Prog {
     pub globals: Vec<VarDec>,
     pub funcs: Vec<Func>,

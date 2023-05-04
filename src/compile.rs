@@ -6,7 +6,7 @@ use crate::{
     block_structure::Var,
     compile_function,
     source_ast::{Func, Prog, Scope, Stmt, Typ, ID},
-    x86::Instruction_x64,
+    x64::Instruction_x64,
 };
 
 fn write_header(file: &mut File) {
@@ -52,10 +52,24 @@ pub fn compile(prog: &mut Prog, target_filename: &str) {
     let globals: HashSet<Var> =
         HashSet::from_iter(prog.globals.iter().map(|glob| id_to_var(&glob.var_name)));
     println!("made it to start of funcs");
-    let functions: Vec<(ID, Vec<Instruction_x64>)> = prog
+    let functions: String = prog
         .funcs
         .iter()
-        .map(|func| compile_function::compile_fun_x64(false, &globals, func))
-        .collect();
-    println!("made it to end of funcs");
+        .map(|func| compile_function::compile_fun_x64(&globals, func))
+        .map(|(id, body)| match id {
+            ID::Source(n, _) => format!("{}:\n{}", n, body),
+            ID::Temp(n, _) => format!("{}:\n{}", n, body),
+        })
+        .collect::<Vec<String>>()
+        .join("");
+    let globs = "[section .bss align=16]\ndefault rel\n".to_string()
+        + &globals
+            .iter()
+            .map(|g| match g {
+                Var::NamedSource(n, Scope::Global) => format!("{}_global: resq 1\n", n),
+                _ => panic!("non global in globals"),
+            })
+            .collect::<Vec<String>>()
+            .join("");
+    write!(file, "{}{}", &functions, &globs).ok();
 }

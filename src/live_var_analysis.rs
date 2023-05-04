@@ -30,9 +30,19 @@ fn add_gen(e: &AtomicExp, gen: &mut HashSet<Var>) {
     }
 }
 
-fn analyse_block(b: &Vec<BlockElem>) -> CFGAnnot {
+fn analyse_block(b: &Vec<BlockElem>, next: &NextBlock) -> CFGAnnot {
     let mut out = CFGAnnot::new();
     //go from top to bottom of block
+    match next {
+        NextBlock::Return(Some(r)) => {
+            out.gen.insert(r.clone());
+        },
+        NextBlock::Branch(Test { exp1, op: _, exp2 }, _, _) => {
+                add_gen(&exp1, &mut out.gen);
+                add_gen(&exp2, &mut out.gen);
+        },
+        _ => {},
+    }
     for e in b.iter().rev() {
         match e {
             BlockElem::AssignOp(i, a1, _, a2) => {
@@ -68,7 +78,7 @@ fn analyse_block(b: &Vec<BlockElem>) -> CFGAnnot {
             }
             BlockElem::BoundCheck(a1, a2) => {
                 add_gen(&a1, &mut out.gen);
-                add_gen(&a2, &mut out.gen);
+                out.gen.insert(a2.clone());
             }
             BlockElem::NullCheck(v) => {
                 out.gen.insert(v.clone());
@@ -196,7 +206,7 @@ pub fn lva<'a>(globals: &HashSet<Var>, cfg: &'a Vec<CFGEntry>) -> Vec<(&'a CFGEn
         .map(|e| {
             (
                 e,
-                init_live_exit(globals, analyse_block(&e.elems), e.next.clone()),
+                init_live_exit(globals, analyse_block(&e.elems, &e.next), e.next.clone()),
             )
         })
         .collect();
@@ -206,6 +216,16 @@ pub fn lva<'a>(globals: &HashSet<Var>, cfg: &'a Vec<CFGEntry>) -> Vec<(&'a CFGEn
 fn remove_unuesd_writes_block(entry: &mut CFGEntry, annot: &CFGAnnot) {
     let mut live = annot.live_exit.clone();
     let mut to_delete = Vec::new();
+    match &entry.next {
+        NextBlock::Return(Some(r)) => {
+            live.insert(r.clone());
+        },
+        NextBlock::Branch(Test { exp1, op: _, exp2 }, _, _) => {
+                add_gen(&exp1, &mut live);
+                add_gen(&exp2, &mut live);
+        },
+        _ => {},
+    }
     for (index, elem) in entry.elems.iter().enumerate().rev() {
         match elem {
             BlockElem::AssignOp(i, a1, op, a2) if live.contains(i) || !pure_op(*op) => {
@@ -237,7 +257,7 @@ fn remove_unuesd_writes_block(entry: &mut CFGEntry, annot: &CFGAnnot) {
             }
             BlockElem::BoundCheck(a1, a2) => {
                 add_gen(a1, &mut live);
-                add_gen(a2, &mut live);
+                live.insert(a2.clone());
             }
             BlockElem::NullCheck(v) => {
                 live.insert(v.clone());
